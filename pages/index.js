@@ -1,42 +1,64 @@
-import { useEffect, useState } from "react";
+import Head from "next/head";
+import { MongoClient } from "mongodb";
+
 import MeetupList from "../components/meetups/MeetupList";
 
-const DUMMY_MEETUPS = [
-  {
-    id: "m1",
-    title: "First Meetup",
-    image:
-      "https://woocommerce.com/wp-content/themes/woo/images/wc-meetups/host-meetup.jpg",
-    address: "Some address 1, 12345 Some City",
-    description: "This is a first meetup!",
-  },
-  {
-    id: "m2",
-    title: "Second Meetup",
-    image:
-      "https://addicted2success.com/wp-content/uploads/2018/06/8-Reasons-You-Should-Join-a-Meetup-Group-Today.jpg",
-    address: "Some address 2, 12345 Some City",
-    description: "This is the second meetup!",
-  },
-  {
-    id: "m3",
-    title: "Third Meetup",
-    image:
-      "https://memberpress.com/wp-content/uploads/2019/10/Member-Meetup@2x-1024x683.png",
-    address: "Some address 3, 12345 Some City",
-    description: "This is the third meetup!",
-  },
-];
-
-function HomePage() {
-  const [loadedMeetups, setLoadedMeetups] = useState([]);
-
-  useEffect(() => {
-    //send a http request and fetch data
-    setLoadedMeetups(DUMMY_MEETUPS);
-  }, []);
-
-  return <MeetupList meetups={loadedMeetups} />;
+function HomePage(props) {
+  return (
+    <>
+      <Head>
+        <title>React Meetups</title>
+        <meta
+          name="description"
+          content="Browse a huge list of highly active React meetups!"
+        />
+      </Head>
+      <MeetupList meetups={props.meetups} />
+    </>
+  );
 }
 
-export function getStaticP
+// //If you need access to the conext response or request
+// //executes for every incoming request
+// export async function getServerSideProps(context) {
+//   const req = context.req;
+//   const res = context.res;
+
+//   //fetch data from an API
+
+//   return {
+//     props: {
+//       meetups: DUMMY_MEETUPS,
+//     },
+//   };
+// }
+
+//Better for static pages, with a few of requests or none of them, no authentication
+export async function getStaticProps() {
+  //fetch data from api
+  const client = await MongoClient.connect(
+    "mongodb+srv://luispiedrahita:password3383@cluster0.8dlla.mongodb.net/meetups?retryWrites=true&w=majority"
+  );
+
+  const db = client.db();
+
+  const meetupsCollection = db.collection("meetups");
+
+  const meetups = await meetupsCollection.find().toArray();
+
+  client.close();
+
+  return {
+    props: {
+      meetups: meetups.map((meetup) => ({
+        title: meetup.title,
+        address: meetup.address,
+        image: meetup.image,
+        id: meetup._id.toString(),
+      })),
+    },
+    revalidate: 1, //INCREMENTAL STATIC GENERATOR: number of seconds until nextjs refresh
+  };
+}
+
+export default HomePage;
